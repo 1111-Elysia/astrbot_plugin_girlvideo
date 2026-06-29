@@ -212,7 +212,7 @@ class GirlVideoPlugin(Star):
             while current_words:
                 search_kw = " ".join(current_words)
                 try:
-                    page_results = await search_bilibili(
+                    page_results, _ = await search_bilibili(
                         session, keyword=search_kw,
                         cookie=self.bilibili_cookie,
                         count=20, order="totalrank", page=1,
@@ -437,7 +437,7 @@ class GirlVideoPlugin(Star):
             timeout=aiohttp.ClientTimeout(total=15)
         ) as session:
             try:
-                raw = await search_bilibili(
+                raw, total = await search_bilibili(
                     session, keyword=keyword,
                     cookie=self.bilibili_cookie,
                     count=20, order=order, page=1,
@@ -462,7 +462,8 @@ class GirlVideoPlugin(Star):
         fresh = sum(1 for r in results if r["bvid"] and not r["sent"])
         return json_response({
             "keyword": keyword,
-            "total": len(results),
+            "total": total,
+            "page_total": len(results),
             "fresh": fresh,
             "results": results,
         })

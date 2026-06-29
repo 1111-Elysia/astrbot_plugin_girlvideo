@@ -107,11 +107,12 @@
     }
 
     function renderResults(data) {
-      const { keyword, total, fresh, results } = data;
+      const { keyword, total, page_total, fresh, results } = data;
       $('stats').innerHTML = `
         <div class="stat"><div class="stat-val">${total}</div>总结果</div>
+        <div class="stat"><div class="stat-val">${page_total}</div>当前页</div>
         <div class="stat"><div class="stat-val" style="color:var(--green)">${fresh}</div>未发送</div>
-        <div class="stat"><div class="stat-val" style="color:var(--red)">${total-fresh}</div>已发送</div>
+        <div class="stat"><div class="stat-val" style="color:var(--red)">${page_total-fresh}</div>已发送</div>
       `;
 
       if (!results.length) {

@@ -168,7 +168,7 @@ async def search_bilibili(
     count: int = 3,
     order: str = "totalrank",
     page: int = 1,
-) -> List[Dict[str, Any]]:
+) -> Tuple[List[Dict[str, Any]], int]:
     """在 B站搜索视频。
 
     Args:
@@ -180,8 +180,8 @@ async def search_bilibili(
         page: 页码（1-50）。
 
     Returns:
-        视频列表，每项包含 bvid, aid, title, author, play, pic,
-        duration, description, arcurl 字段。
+        (视频列表, 总条数) 元组。视频列表每项包含 bvid, aid, title, author, play,
+        pic, duration, description, arcurl 字段。总条数最大 1000。
 
     Raises:
         RuntimeError: API 返回错误时抛出。
@@ -228,7 +228,12 @@ async def search_bilibili(
     items = result_data.get("result") or []
     if not isinstance(items, list):
         items = []
+    total = result_data.get("numResults", len(items))
+    try:
+        total = int(total)
+    except (TypeError, ValueError):
+        total = len(items)
 
-    return items[:count]
+    return items[:count], min(total, 1000)
 
 

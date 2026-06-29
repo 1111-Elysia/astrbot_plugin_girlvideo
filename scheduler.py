@@ -201,7 +201,7 @@ class Scheduler:
             while current_words:
                 search_kw = " ".join(current_words)
                 try:
-                    page_results = await search_bilibili(
+                    page_results, _ = await search_bilibili(
                         session, keyword=search_kw,
                         cookie=self._bilibili_cookie,
                         count=20, order=task_order, page=1,

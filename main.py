@@ -211,21 +211,28 @@ class GirlVideoPlugin(Star):
             current_words = list(words)
             while current_words:
                 search_kw = " ".join(current_words)
-                try:
-                    page_results, _ = await search_bilibili(
-                        session, keyword=search_kw,
-                        cookie=self.bilibili_cookie,
-                        count=20, order="totalrank", page=1,
-                    )
-                except RuntimeError as e:
-                    logger.error(f"[girlvideo] 搜索失败: {e}")
-                    page_results = []
-                fresh = [
-                    item for item in (page_results or [])
-                    if str(item.get("bvid", "")).strip() not in sent_bvids
-                ]
-                if fresh:
-                    results = fresh
+                pg = 1
+                while pg <= 5:
+                    try:
+                        page_results, _ = await search_bilibili(
+                            session, keyword=search_kw,
+                            cookie=self.bilibili_cookie,
+                            count=20, order="totalrank", page=pg,
+                        )
+                    except RuntimeError as e:
+                        logger.error(f"[girlvideo] 搜索失败(第{pg}页): {e}")
+                        page_results = []
+                    if not page_results:
+                        break
+                    fresh = [
+                        item for item in (page_results or [])
+                        if str(item.get("bvid", "")).strip() not in sent_bvids
+                    ]
+                    if fresh:
+                        results = fresh
+                        break
+                    pg += 1
+                if results:
                     break
                 if len(current_words) <= 1:
                     break

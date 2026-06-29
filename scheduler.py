@@ -150,7 +150,7 @@ class Scheduler:
             for pid in platform_ids:
                 constructed.append(f"{pid}:GroupMessage:{gid_str}")
             if not constructed:
-                constructed.append(f"aiocqhttp:GroupMessage:{gid_str}")
+                constructed.append(f"default:GroupMessage:{gid_str}")
             for umo in constructed:
                 targets.append((umo, f"{gid_str}(构造:{umo[:30]})"))
                 logger.info(f"[girlvideo] 定时任务: 构造 origin {umo[:50]}")

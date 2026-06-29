@@ -468,7 +468,11 @@ class GirlVideoPlugin(Star):
         if not url:
             return json_response({"error": "缺少url参数"}, status_code=400)
 
-        url = url.replace("http://", "https://", 1)
+        # 规范化 URL: 协议相对 → https
+        if url.startswith("//"):
+            url = "https:" + url
+        elif url.startswith("http://"):
+            url = url.replace("http://", "https://", 1)
 
         headers = {
             "User-Agent": (

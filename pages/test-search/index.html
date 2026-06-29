@@ -126,7 +126,10 @@
                     : sent ? '<span class="badge badge-sent">已发送</span>'
                     : '<span class="badge badge-new">未发送</span>';
         const play = r.play >= 10000 ? (r.play/10000).toFixed(1)+'万' : r.play;
-        const cover = r.pic ? `<img class="result-cover" src="/api/v1/plugins/extensions/astrbot_plugin_girlvideo/proxy-image?url=${encodeURIComponent(r.pic)}" />` : '';
+        let picUrl = r.pic || '';
+        if (picUrl.startsWith('//')) picUrl = 'https:' + picUrl;
+        else if (picUrl.startsWith('http://')) picUrl = picUrl.replace('http://', 'https://');
+        const cover = picUrl ? `<img class="result-cover" src="${escAttr(picUrl)}" referrerpolicy="no-referrer" />` : '';
         return `
           <div class="result-card">
             ${cover}

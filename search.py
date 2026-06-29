@@ -8,7 +8,7 @@ WBI 签名算法与 astrbot_plugin_media_parser 的 bilibili.py 一致，
 import hashlib
 import re
 import time
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from urllib.parse import urlencode, urlparse
 from pathlib import Path
 

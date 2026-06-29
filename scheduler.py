@@ -15,6 +15,21 @@ from .search import search_bilibili, ORDER_MAP
 from .storage import SentRecordStore, OriginStore
 
 
+def _parse_duration(dur: str) -> int:
+    """解析 B站时长格式为秒数：3:45→225, 1:23:45→5025。"""
+    if not dur or not dur.strip():
+        return 0
+    parts = dur.strip().split(":")
+    try:
+        if len(parts) == 3:
+            return int(parts[0]) * 3600 + int(parts[1]) * 60 + int(parts[2])
+        elif len(parts) == 2:
+            return int(parts[0]) * 60 + int(parts[1])
+        return int(parts[0])
+    except (ValueError, TypeError):
+        return 0
+
+
 def _get_media_parser(context) -> Optional[Star]:
     """获取 media_parser 实例。"""
     try:
@@ -242,6 +257,23 @@ class Scheduler:
                 bvid = str(item.get("bvid", "")).strip()
                 if not bvid:
                     continue
+
+                # 时长过滤
+                try:
+                    max_dur = max(0, int(task.get("max_duration_seconds", 0)))
+                except (TypeError, ValueError):
+                    max_dur = 0
+                if max_dur > 0:
+                    dur_str = str(item.get("duration", "")).strip()
+                    dur_sec = _parse_duration(dur_str)
+                    if dur_sec > max_dur:
+                        logger.info(
+                            f"[girlvideo] 视频时长 {dur_sec}s"
+                            f" > {max_dur}s，换下一个: {bvid}"
+                        )
+                        tried_bvids.append(bvid)
+                        continue
+
                 video_url = f"https://www.bilibili.com/video/{bvid}"
                 logger.info(f"[girlvideo] 尝试下载 {idx}/{len(candidates)}: {bvid}")
 

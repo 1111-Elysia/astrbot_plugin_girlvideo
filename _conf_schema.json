@@ -88,6 +88,14 @@
                         ],
                         "default": "综合排序"
                     },
+                    "max_duration_seconds": {
+                        "type": "int",
+                        "description": "视频时长上限(秒)",
+                        "hint": "超过此时长的视频跳过不下载，0=不限制",
+                        "default": 0,
+                        "min": 0,
+                        "max": 36000
+                    },
                     "max_size_mb": {
                         "type": "int",
                         "description": "视频大小上限(MB)",

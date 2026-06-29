@@ -17,7 +17,7 @@ from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.message_components import Video as CompVideo
 from astrbot.api.star import Context, Star, register
-from astrbot.api.web import json_response, request, stream_response
+from astrbot.api.web import json_response, request
 
 from .search import search_bilibili
 from .storage import SentRecordStore, OriginStore, get_data_dir
@@ -468,6 +468,8 @@ class GirlVideoPlugin(Star):
         if not url:
             return json_response({"error": "缺少url参数"}, status_code=400)
 
+        url = url.replace("http://", "https://", 1)
+
         headers = {
             "User-Agent": (
                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -487,19 +489,11 @@ class GirlVideoPlugin(Star):
                             {"error": f"上游返回 {resp.status}"},
                             status_code=502,
                         )
+                    data = await resp.read()
                     ct = resp.headers.get("Content-Type", "image/jpeg")
-
-                    async def stream():
-                        while True:
-                            chunk = await resp.content.read(65536)
-                            if not chunk:
-                                break
-                            yield chunk
-
-                    return stream_response(
-                        stream(),
-                        headers={"Content-Type": ct},
-                    )
+                    # 返回原始字节（Quart 兼容）
+                    from quart import Response
+                    return Response(data, mimetype=ct)
             except Exception as e:
                 return json_response({"error": str(e)}, status_code=502)
 

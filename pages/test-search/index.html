@@ -53,9 +53,11 @@
   <div id="stats" class="stats"></div>
   <div id="results"></div>
 
+  <script src="/api/plugin/page/bridge-sdk.js"></script>
   <script>
     const bridge = window.AstrBotPluginPage;
     const $ = id => document.getElementById(id);
+    if (!bridge) { document.body.innerHTML = '<div class="error">Bridge SDK 未加载，请刷新页面</div>'; throw new Error('bridge not loaded'); }
 
     let config = {};
     let sentBvids = new Set();

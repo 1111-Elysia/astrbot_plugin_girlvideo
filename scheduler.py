@@ -358,26 +358,36 @@ class Scheduler:
                     tried_bvids.append(bvid)
                     continue
 
-                # 中转
-                if self._relay_enable and self._relay_callback_url and _relay_fn:
-                    try:
-                        await _relay_fn(
-                            pm, self._relay_callback_url, self._relay_ttl,
-                        )
-                    except Exception:
-                        pass
-
-                # 发送
-                use_relay = bool(pm.get("use_file_token_service"))
-                urls = (
-                    pm.get("file_token_urls")
-                    if use_relay
-                    else pm.get("file_paths")
+                # 发送到每个目标（每个目标独立注册中转，避免 token 单次消费）
+                has_local = bool(
+                    pm.get("file_paths")
+                    and any(fp and vm == "local" for fp, vm in zip(
+                        pm.get("file_paths") or [],
+                        pm.get("video_modes") or [],
+                    ))
                 )
-                for url in (urls or []):
-                    if not url:
-                        continue
-                    for umo, label in targets:
+                for umo, label in targets:
+                    send_pm = pm
+                    if has_local and self._relay_enable and self._relay_callback_url and _relay_fn:
+                        # 每个目标单独注册，获得独立 token
+                        import copy
+                        send_pm = copy.deepcopy(pm)
+                        try:
+                            await _relay_fn(
+                                send_pm, self._relay_callback_url, self._relay_ttl,
+                            )
+                        except Exception:
+                            pass
+
+                    use_relay = bool(send_pm.get("use_file_token_service"))
+                    urls = (
+                        send_pm.get("file_token_urls")
+                        if use_relay
+                        else send_pm.get("file_paths")
+                    )
+                    for url in (urls or []):
+                        if not url:
+                            continue
                         chain = MessageChain()
                         chain.chain = [
                             CompVideo.fromURL(url) if use_relay

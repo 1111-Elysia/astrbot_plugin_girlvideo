@@ -1,0 +1,4 @@
+name: astrbot_plugin_girlvideo
+desc: B站视频搜索下载，输入关键词即可搜索B站视频并通过media_parser下载发送
+version: v1.0.0
+author: pgd

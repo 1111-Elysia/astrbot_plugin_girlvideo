@@ -1,0 +1,137 @@
+{
+    "trigger": {
+        "description": "触发设置",
+        "type": "object",
+        "hint": "配置插件的触发方式，支持指令和关键词触发",
+        "items": {
+            "keywords": {
+                "description": "触发关键词",
+                "type": "list",
+                "default": ["/搜视频", "搜视频"],
+                "hint": "当消息包含这些关键词时触发搜索。用户只需发送「触发词 + 搜索关键词」即可，例如「搜视频 可爱猫咪」。支持多个关键词，用英文逗号分隔"
+            }
+        }
+    },
+    "relay": {
+        "description": "媒体中转设置",
+        "type": "object",
+        "hint": "将下载到本地的视频文件转为公网URL发送，解决协议端无法访问AstrBot文件系统的问题",
+        "items": {
+            "enable": {
+                "description": "启用媒体中转",
+                "type": "bool",
+                "default": true,
+                "hint": "启用后，下载的视频会注册为AstrBot文件token，通过公网URL发送而非本地路径"
+            },
+            "callback_url": {
+                "description": "AstrBot公网回调地址",
+                "type": "string",
+                "default": "",
+                "hint": "填写AstrBot的公网访问地址，如 http://your-server:6185。协议端将通过此地址下载视频文件"
+            },
+            "ttl": {
+                "description": "中转缓存有效期(秒)",
+                "type": "int",
+                "default": 300,
+                "min": 60,
+                "max": 86400,
+                "hint": "文件token的有效时间，过期后URL失效"
+            }
+        }
+    },
+    "timer_tasks": {
+        "type": "template_list",
+        "description": "定时搜索任务",
+        "hint": "可添加多个定时搜索任务，每个任务按设定的间隔自动在指定群聊搜索B站视频并发送。保存后每个任务会包含 __template_key 和对应配置项",
+        "templates": {
+            "scheduled_search": {
+                "name": "定时搜索",
+                "hint": "按固定间隔向指定群聊自动搜索B站视频并发送",
+                "items": {
+                    "enabled": {
+                        "type": "bool",
+                        "description": "启用此任务",
+                        "hint": "关闭后此任务不会执行",
+                        "default": true
+                    },
+                    "keyword": {
+                        "type": "string",
+                        "description": "搜索关键词",
+                        "hint": "定时搜索使用的B站关键词",
+                        "default": ""
+                    },
+                    "interval_minutes": {
+                        "type": "int",
+                        "description": "搜索间隔（分钟）",
+                        "hint": "每隔多少分钟自动搜索一次",
+                        "default": 60,
+                        "min": 1,
+                        "max": 1440
+                    },
+                    "count": {
+                        "type": "int",
+                        "description": "每次发送视频数量",
+                        "hint": "每次定时搜索发送几个视频",
+                        "default": 1,
+                        "min": 1,
+                        "max": 5
+                    },
+                    "order": {
+                        "type": "string",
+                        "description": "排序方式",
+                        "hint": "搜索结果排序方式",
+                        "options": [
+                            "综合排序",
+                            "最多播放",
+                            "最新发布",
+                            "最多弹幕"
+                        ],
+                        "default": "综合排序"
+                    },
+                    "max_size_mb": {
+                        "type": "int",
+                        "description": "视频大小上限(MB)",
+                        "hint": "超过此大小的视频跳过不下载，0=不限制",
+                        "default": 50,
+                        "min": 0,
+                        "max": 2000
+                    },
+                    "target_groups": {
+                        "type": "list",
+                        "description": "目标群聊ID",
+                        "hint": "接收定时搜索结果视频的群聊ID列表，留空则不发送",
+                        "default": []
+                    }
+                }
+            }
+        }
+    },
+    "cache": {
+        "description": "缓存清理设置",
+        "type": "object",
+        "hint": "定期清理视频下载缓存目录，释放磁盘空间",
+        "items": {
+            "cleanup_interval_minutes": {
+                "description": "缓存清理间隔（分钟）",
+                "type": "int",
+                "default": 60,
+                "min": 0,
+                "max": 10080,
+                "hint": "每隔多少分钟清理一次视频缓存目录，0=不清理。建议设置60分钟以上"
+            }
+        }
+    },
+    "bilibili": {
+        "description": "B站配置",
+        "type": "object",
+        "hint": "B站Cookie配置可提升搜索稳定性，不配置也可使用",
+        "items": {
+            "cookie": {
+                "description": "B站Cookie",
+                "type": "string",
+                "default": "",
+                "hint": "填写完整的Cookie字符串（需包含SESSDATA字段），留空则使用无Cookie模式"
+            }
+        }
+    }
+}

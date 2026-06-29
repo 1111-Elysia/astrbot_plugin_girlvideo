@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+test_cache/
+*.zip
+项目说明.md
+CLAUDE.md

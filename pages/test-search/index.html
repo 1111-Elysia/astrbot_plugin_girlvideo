@@ -126,7 +126,7 @@
                     : sent ? '<span class="badge badge-sent">已发送</span>'
                     : '<span class="badge badge-new">未发送</span>';
         const play = r.play >= 10000 ? (r.play/10000).toFixed(1)+'万' : r.play;
-        const cover = r.pic ? `<img class="result-cover" src="proxy-image?url=${encodeURIComponent(r.pic)}" />` : '';
+        const cover = r.pic ? `<img class="result-cover" src="/api/v1/plugins/extensions/astrbot_plugin_girlvideo/proxy-image?url=${encodeURIComponent(r.pic)}" />` : '';
         return `
           <div class="result-card">
             ${cover}

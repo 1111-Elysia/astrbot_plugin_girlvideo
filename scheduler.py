@@ -201,7 +201,7 @@ class Scheduler:
             while current_words:
                 search_kw = " ".join(current_words)
                 pg = 1
-                while pg <= 5:
+                while pg <= 50:
                     try:
                         page_results, _ = await search_bilibili(
                             session, keyword=search_kw,

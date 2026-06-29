@@ -377,12 +377,12 @@ class Scheduler:
                 for url in (urls or []):
                     if not url:
                         continue
-                    chain = MessageChain()
-                    chain.chain = [
-                        CompVideo.fromURL(url) if use_relay
-                        else CompVideo.fromFileSystem(url)
-                    ]
                     for umo, label in targets:
+                        chain = MessageChain()
+                        chain.chain = [
+                            CompVideo.fromURL(url) if use_relay
+                            else CompVideo.fromFileSystem(url)
+                        ]
                         try:
                             await self._context.send_message(umo, chain)
                             sent_count += 1

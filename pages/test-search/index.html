@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <title>搜索测试</title>
+  <style>
+    :root { --bg: #fff; --text: #1a1a1a; --card: #f5f5f5; --border: #e0e0e0; --accent: #fb7299; --green: #52c41a; --red: #ff4d4f; --tag-bg: #fff0f3; }
+    [data-theme="dark"] { --bg: #1a1a1a; --text: #e0e0e0; --card: #2a2a2a; --border: #404040; --tag-bg: #3a1a2a; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font: 14px/1.6 -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 20px; }
+    h2 { font-size: 18px; margin-bottom: 12px; }
+    .row { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
+    input, select, button { padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 14px; background: var(--bg); color: var(--text); }
+    input { flex: 1; min-width: 200px; }
+    button { cursor: pointer; background: var(--accent); color: #fff; border: none; font-weight: 500; }
+    button:disabled { opacity: .5; cursor: not-allowed; }
+    .task-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+    .task-tag { padding: 4px 12px; border-radius: 20px; background: var(--tag-bg); border: 1px solid var(--accent); color: var(--accent); cursor: pointer; font-size: 13px; }
+    .task-tag:hover { background: var(--accent); color: #fff; }
+    .result-card { background: var(--card); border-radius: 8px; padding: 12px; margin-bottom: 10px; display: flex; gap: 12px; align-items: flex-start; }
+    .result-cover { width: 120px; height: 75px; border-radius: 4px; object-fit: cover; background: var(--border); flex-shrink: 0; }
+    .result-info { flex: 1; min-width: 0; }
+    .result-title { font-weight: 600; margin-bottom: 4px; word-break: break-all; }
+    .result-meta { font-size: 12px; color: #888; display: flex; gap: 12px; flex-wrap: wrap; }
+    .result-bvid { font-family: monospace; font-size: 12px; }
+    .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; }
+    .badge-new { background: #e6f7e6; color: var(--green); }
+    .badge-sent { background: #fff2f0; color: var(--red); }
+    .badge-skip { background: #fffbe6; color: #d48806; }
+    .stats { display: flex; gap: 16px; margin-bottom: 16px; font-size: 13px; }
+    .stat { padding: 8px 16px; border-radius: 8px; background: var(--card); }
+    .stat-val { font-size: 20px; font-weight: 700; }
+    .loading { text-align: center; padding: 40px; color: #888; }
+    .error { color: var(--red); padding: 8px; }
+  </style>
+</head>
+<body>
+  <h2>🔍 B站搜索测试</h2>
+
+  <div id="taskTags" class="task-tags"></div>
+
+  <div class="row">
+    <input id="keyword" placeholder="输入搜索关键词，回车搜索" />
+    <select id="order">
+      <option value="totalrank">综合排序</option>
+      <option value="click">最多播放</option>
+      <option value="pubdate">最新发布</option>
+      <option value="dm">最多弹幕</option>
+    </select>
+    <button id="btnSearch" onclick="doSearch()">搜索</button>
+  </div>
+
+  <div id="stats" class="stats"></div>
+  <div id="results"></div>
+
+  <script>
+    const bridge = window.AstrBotPluginPage;
+    const $ = id => document.getElementById(id);
+
+    let config = {};
+    let sentBvids = new Set();
+
+    async function init() {
+      const ctx = await bridge.ready();
+      try { config = await bridge.apiGet('config'); } catch(e) { showErr('加载配置失败: '+e.message); }
+      try { const r = await bridge.apiGet('sent-bvids'); sentBvids = new Set(r.bvids || []); } catch(e) {}
+      renderTaskTags();
+    }
+
+    function renderTaskTags() {
+      const tasks = (config && config.timer_tasks) || [];
+      const used = new Set();
+      const html = tasks.filter(t => t.keyword).map(t => {
+        used.add(t.keyword);
+        return `<span class="task-tag" onclick="searchTask('${esc(t.keyword)}')">${esc(t.keyword)}</span>`;
+      }).join('');
+      $('taskTags').innerHTML = html || '<span style="color:#888">无定时任务关键词</span>';
+    }
+
+    async function searchTask(kw) {
+      $('keyword').value = kw;
+      await doSearch();
+    }
+
+    async function doSearch() {
+      const kw = $('keyword').value.trim();
+      if (!kw) return;
+
+      $('btnSearch').disabled = true;
+      $('results').innerHTML = '<div class="loading">⏳ 搜索中...</div>';
+      $('stats').innerHTML = '';
+
+      try {
+        const data = await bridge.apiPost('search', {
+          keyword: kw,
+          order: $('order').value,
+        });
+        if (data.error) { showErr(data.error); return; }
+        $('btnSearch').disabled = false;
+        renderResults(data);
+      } catch(e) {
+        showErr('搜索失败: ' + e.message);
+        $('btnSearch').disabled = false;
+      }
+    }
+
+    function renderResults(data) {
+      const { keyword, total, fresh, results } = data;
+      $('stats').innerHTML = `
+        <div class="stat"><div class="stat-val">${total}</div>总结果</div>
+        <div class="stat"><div class="stat-val" style="color:var(--green)">${fresh}</div>未发送</div>
+        <div class="stat"><div class="stat-val" style="color:var(--red)">${total-fresh}</div>已发送</div>
+      `;
+
+      if (!results.length) {
+        $('results').innerHTML = '<div class="loading">无结果</div>';
+        return;
+      }
+
+      $('results').innerHTML = results.map((r, i) => {
+        const sent = sentBvids.has(r.bvid);
+        const noBvid = !r.bvid;
+        const badge = noBvid ? '<span class="badge badge-skip">无BV号</span>'
+                    : sent ? '<span class="badge badge-sent">已发送</span>'
+                    : '<span class="badge badge-new">未发送</span>';
+        const play = r.play >= 10000 ? (r.play/10000).toFixed(1)+'万' : r.play;
+        const cover = r.pic ? `<img class="result-cover" src="${escAttr(r.pic)}" onerror="this.style.display='none'" />` : '';
+        return `
+          <div class="result-card">
+            ${cover}
+            <div class="result-info">
+              <div class="result-title">${i+1}. ${esc(r.title)} ${badge}</div>
+              <div class="result-meta">
+                <span>UP: ${esc(r.author)}</span>
+                <span>▶ ${play}</span>
+                <span>⏱ ${r.duration||'?'}</span>
+              </div>
+              <div class="result-bvid">${r.bvid ? 'BV: '+esc(r.bvid)+' → bilibili.com/video/'+esc(r.bvid) : ''}</div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    function esc(s) { const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+    function escAttr(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    function showErr(msg) { $('results').innerHTML = '<div class="error">'+esc(msg)+'</div>'; $('btnSearch').disabled = false; }
+
+    $('keyword').addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
+    init();
+  </script>
+</body>
+</html>

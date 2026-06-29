@@ -11,10 +11,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import aiohttp
 
+import aiohttp
+
 from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.message_components import Video as CompVideo
 from astrbot.api.star import Context, Star, register
+from astrbot.api.web import json_response, request
 
 from .search import search_bilibili
 from .storage import SentRecordStore, OriginStore, get_data_dir
@@ -101,6 +104,20 @@ class GirlVideoPlugin(Star):
             relay_ttl=self.relay_ttl,
         )
         self._scheduler.start()
+
+        # ── 注册 WebUI 页面 API ──
+        context.register_web_api(
+            "/astrbot_plugin_girlvideo/search",
+            self._api_search, ["POST"], "测试搜索"
+        )
+        context.register_web_api(
+            "/astrbot_plugin_girlvideo/sent-bvids",
+            self._api_sent_bvids, ["GET"], "已发送BV号"
+        )
+        context.register_web_api(
+            "/astrbot_plugin_girlvideo/config",
+            self._api_config, ["GET"], "插件配置"
+        )
 
         # ── 缓存清理 ──
         cache_cfg = config.get("cache") or {}
@@ -378,6 +395,68 @@ class GirlVideoPlugin(Star):
                 count = -1
             text = re.sub(r"--数量\s+\d+", "", text).strip()
         return text.strip(), count
+
+    # ── WebUI API ──────────────────────────────────────────
+
+    async def _api_config(self):
+        """返回当前插件配置（供页面使用）。"""
+        timer_tasks = []
+        for t in self._scheduler._timer_tasks:
+            if t.get("enabled") and t.get("keyword"):
+                timer_tasks.append({
+                    "keyword": t.get("keyword", ""),
+                    "interval_minutes": t.get("interval_minutes", 60),
+                    "count": t.get("count", 1),
+                })
+        return json_response({"timer_tasks": timer_tasks})
+
+    async def _api_sent_bvids(self):
+        """返回已发送的 BV 号列表。"""
+        bvids = sorted(self._sent_store.load())
+        return json_response({"bvids": bvids, "count": len(bvids)})
+
+    async def _api_search(self):
+        """执行测试搜索并返回结果。"""
+        payload = await request.json(default={})
+        keyword = str(payload.get("keyword", "")).strip()
+        order = str(payload.get("order", "totalrank")).strip()
+        if not keyword:
+            return json_response({"error": "请提供关键词"}, status_code=400)
+
+        sent_bvids = self._sent_store.load()
+        async with aiohttp.ClientSession(
+            timeout=aiohttp.ClientTimeout(total=15)
+        ) as session:
+            try:
+                raw = await search_bilibili(
+                    session, keyword=keyword,
+                    cookie=self.bilibili_cookie,
+                    count=20, order=order, page=1,
+                )
+            except RuntimeError as e:
+                return json_response({"error": str(e)})
+
+        results = []
+        for item in (raw or []):
+            bvid = str(item.get("bvid", "")).strip()
+            results.append({
+                "title": str(item.get("title", "")),
+                "author": str(item.get("author", "")),
+                "bvid": bvid,
+                "aid": item.get("aid"),
+                "play": item.get("play", 0),
+                "duration": str(item.get("duration", "")),
+                "pic": str(item.get("pic", "")),
+                "sent": bvid in sent_bvids if bvid else False,
+            })
+
+        fresh = sum(1 for r in results if r["bvid"] and not r["sent"])
+        return json_response({
+            "keyword": keyword,
+            "total": len(results),
+            "fresh": fresh,
+            "results": results,
+        })
 
     # ── 缓存清理 ──────────────────────────────────────────
 

@@ -4,6 +4,7 @@ astrbot_plugin_girlvideo - B站视频搜索插件
 触发方式: 消息中包含配置的触发关键词时自动搜索B站视频并下载发送。
 """
 import asyncio
+import base64
 import os
 import re
 import shutil
@@ -121,6 +122,10 @@ class GirlVideoPlugin(Star):
         context.register_web_api(
             "/astrbot_plugin_girlvideo/proxy-image",
             self._api_proxy_image, ["GET"], "图片代理"
+        )
+        context.register_web_api(
+            "/astrbot_plugin_girlvideo/cover-base64",
+            self._api_cover_base64, ["GET"], "封面base64"
         )
 
         # ── 缓存清理 ──
@@ -500,6 +505,36 @@ class GirlVideoPlugin(Star):
                     return Response(data, mimetype=ct)
             except Exception as e:
                 return json_response({"error": str(e)}, status_code=502)
+
+    async def _api_cover_base64(self):
+        """获取封面图的 base64，供页面通过 bridge 调用（绕过沙箱限制）。"""
+        url = request.query.get("url", "").strip()
+        if not url:
+            return json_response({"error": "缺少url参数"}, status_code=400)
+        if url.startswith("//"):
+            url = "https:" + url
+        elif url.startswith("http://"):
+            url = url.replace("http://", "https://", 1)
+
+        headers = {
+            "User-Agent": "Mozilla/5.0",
+            "Referer": "https://www.bilibili.com",
+        }
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(
+                    url, headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    if resp.status != 200:
+                        return json_response({"error": f"上游返回 {resp.status}"})
+                    data = await resp.read()
+                    return json_response({
+                        "base64": base64.b64encode(data).decode(),
+                        "size": len(data),
+                    })
+            except Exception as e:
+                return json_response({"error": str(e)})
 
     # ── 缓存清理 ──────────────────────────────────────────
 

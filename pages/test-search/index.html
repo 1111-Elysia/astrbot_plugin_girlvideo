@@ -129,7 +129,9 @@
         let picUrl = r.pic || '';
         if (picUrl.startsWith('//')) picUrl = 'https:' + picUrl;
         else if (picUrl.startsWith('http://')) picUrl = picUrl.replace('http://', 'https://');
-        const cover = picUrl ? `<img class="result-cover" src="${escAttr(picUrl)}" referrerpolicy="no-referrer" />` : '';
+        const coverId = 'cover-' + i;
+        if (picUrl) loadCover(picUrl, coverId);
+        const cover = `<div class="result-cover" id="${coverId}"></div>`;
         return `
           <div class="result-card">
             ${cover}
@@ -151,6 +153,17 @@
     function showErr(msg) { $('results').innerHTML = '<div class="error">'+esc(msg)+'</div>'; $('btnSearch').disabled = false; }
 
     $('keyword').addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
+
+    async function loadCover(picUrl, elId) {
+      try {
+        const r = await bridge.apiGet('cover-base64', { url: picUrl });
+        if (r && r.base64) {
+          const el = document.getElementById(elId);
+          if (el) el.innerHTML = `<img src="data:image/jpeg;base64,${r.base64}" style="width:100%;height:100%;object-fit:cover;border-radius:4px" />`;
+        }
+      } catch(e) {}
+    }
+
     init();
   </script>
 </body>

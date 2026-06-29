@@ -17,7 +17,7 @@ from astrbot.api import logger
 from astrbot.api.event import filter, AstrMessageEvent
 from astrbot.api.message_components import Video as CompVideo
 from astrbot.api.star import Context, Star, register
-from astrbot.api.web import json_response, request
+from astrbot.api.web import json_response, request, stream_response
 
 from .search import search_bilibili
 from .storage import SentRecordStore, OriginStore, get_data_dir
@@ -117,6 +117,10 @@ class GirlVideoPlugin(Star):
         context.register_web_api(
             "/astrbot_plugin_girlvideo/config",
             self._api_config, ["GET"], "插件配置"
+        )
+        context.register_web_api(
+            "/astrbot_plugin_girlvideo/proxy-image",
+            self._api_proxy_image, ["GET"], "图片代理"
         )
 
         # ── 缓存清理 ──
@@ -457,6 +461,47 @@ class GirlVideoPlugin(Star):
             "fresh": fresh,
             "results": results,
         })
+
+    async def _api_proxy_image(self):
+        """代理 B站封面图，添加 Referer 绕过防盗链。"""
+        url = request.query.get("url", "").strip()
+        if not url:
+            return json_response({"error": "缺少url参数"}, status_code=400)
+
+        headers = {
+            "User-Agent": (
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 (KHTML, like Gecko) "
+                "Chrome/120.0.0.0 Safari/537.36"
+            ),
+            "Referer": "https://www.bilibili.com",
+        }
+        async with aiohttp.ClientSession() as session:
+            try:
+                async with session.get(
+                    url, headers=headers,
+                    timeout=aiohttp.ClientTimeout(total=10),
+                ) as resp:
+                    if resp.status != 200:
+                        return json_response(
+                            {"error": f"上游返回 {resp.status}"},
+                            status_code=502,
+                        )
+                    ct = resp.headers.get("Content-Type", "image/jpeg")
+
+                    async def stream():
+                        while True:
+                            chunk = await resp.content.read(65536)
+                            if not chunk:
+                                break
+                            yield chunk
+
+                    return stream_response(
+                        stream(),
+                        headers={"Content-Type": ct},
+                    )
+            except Exception as e:
+                return json_response({"error": str(e)}, status_code=502)
 
     # ── 缓存清理 ──────────────────────────────────────────
 

@@ -2,6 +2,7 @@
 import asyncio
 import random
 import time
+from datetime import datetime, time as dtime
 from typing import Any, Dict, List, Optional, Set, Tuple
 
 import aiohttp
@@ -28,6 +29,22 @@ def _parse_duration(dur: str) -> int:
         return int(parts[0])
     except (ValueError, TypeError):
         return 0
+
+
+def _in_time_window(start: str, end: str) -> bool:
+    """检查当前时间是否在 HH:MM ~ HH:MM 时段内。均为空则不限。"""
+    if not start and not end:
+        return True
+    now = datetime.now().time()
+    try:
+        t_start = dtime.fromisoformat(start) if start else dtime(0, 0)
+        t_end = dtime.fromisoformat(end) if end else dtime(23, 59)
+    except ValueError:
+        return True
+    if t_start <= t_end:
+        return t_start <= now <= t_end
+    else:
+        return now >= t_start or now <= t_end
 
 
 def _get_media_parser(context) -> Optional[Star]:
@@ -110,6 +127,11 @@ class Scheduler:
                     if now - self._task_last_run.get(idx, 0) >= interval * 60:
                         if self._task_running:
                             logger.info("[girlvideo] 上一任务未完成，跳过本轮")
+                            continue
+                        if not _in_time_window(
+                            str(task.get("start_time", "")).strip(),
+                            str(task.get("end_time", "")).strip(),
+                        ):
                             continue
                         logger.info(f"[girlvideo] 定时任务触发 | 间隔: {interval}min")
                         self._task_last_run[idx] = now

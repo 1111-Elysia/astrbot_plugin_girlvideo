@@ -88,6 +88,18 @@
                         ],
                         "default": "综合排序"
                     },
+                    "start_time": {
+                        "type": "string",
+                        "description": "起始时间",
+                        "hint": "仅在此时段内执行定时推送，格式 HH:MM，如 08:00。留空=不限制",
+                        "default": ""
+                    },
+                    "end_time": {
+                        "type": "string",
+                        "description": "终止时间",
+                        "hint": "仅在此时段内执行定时推送，格式 HH:MM，如 22:00。留空=不限制",
+                        "default": ""
+                    },
                     "max_duration_seconds": {
                         "type": "int",
                         "description": "视频时长上限(秒)",
